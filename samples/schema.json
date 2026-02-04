@@ -1,0 +1,14 @@
+{
+    "tableName": "import_data",
+    "columns": [
+      { "name": "id", "type": "INT" },
+      { "name": "name", "type": "VARCHAR(255)" },
+      { "name": "created_at", "type": "DATETIME" }
+    ],
+    "csv": {
+      "delimiter": ",",
+      "quote": "\"",
+      "hasHeader": true
+    }
+  }
+  

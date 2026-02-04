@@ -1,11 +1,36 @@
 <configuration>
+
+  <property name="LOG_DIR" value="logs"/>
+  <property name="APP_LOG" value="${LOG_DIR}/app.log"/>
+
+  <property name="LOG_PATTERN"
+            value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"/>
+
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
-      <pattern>%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+      <pattern>${LOG_PATTERN}</pattern>
+    </encoder>
+  </appender>
+
+  <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${APP_LOG}</file>
+
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${LOG_DIR}/app-%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+
+      <maxHistory>2</maxHistory>
+
+      <totalSizeCap>2GB</totalSizeCap>
+    </rollingPolicy>
+
+    <encoder>
+      <pattern>${LOG_PATTERN}</pattern>
     </encoder>
   </appender>
 
   <root level="INFO">
     <appender-ref ref="STDOUT"/>
+    <appender-ref ref="FILE"/>
   </root>
+
 </configuration>
