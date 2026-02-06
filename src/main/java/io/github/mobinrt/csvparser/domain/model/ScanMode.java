@@ -2,5 +2,9 @@ package io.github.mobinrt.csvparser.domain.model;
 
 public enum ScanMode {
     NON_RECURSIVE,
-    RECURSIVE
+    RECURSIVE;
+
+    public boolean isRecursive() {
+        return this == RECURSIVE;
+    }
 }
