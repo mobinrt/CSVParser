@@ -6,7 +6,7 @@ public final class SqlTypeMapper {
 
     /**
      * Map schema type string to MySQL column type. If null/blank => default to
-     * TEXT (safe, flexible).
+     * TEXT.
      */
     public String toMySqlType(String schemaType) {
         if (schemaType == null || schemaType.isBlank()) {
