@@ -33,7 +33,7 @@ public final class FileSystemInputResolver implements InputResolver {
             addCsvFilesFromInput(results, normalized, scanMode);
         }
 
-        return toDeterministicallySortedImmutableList(results);
+        return sortAndFreezeResults(results);
     }
 
     private void validateInputs(List<Path> inputs) {
@@ -105,7 +105,7 @@ public final class FileSystemInputResolver implements InputResolver {
         return name.endsWith(".csv");
     }
 
-    private List<Path> toDeterministicallySortedImmutableList(List<Path> results) {
+    private List<Path> sortAndFreezeResults(List<Path> results) {
         results.sort(Comparator.comparing(Path::toString));
         return List.copyOf(results);
     }
