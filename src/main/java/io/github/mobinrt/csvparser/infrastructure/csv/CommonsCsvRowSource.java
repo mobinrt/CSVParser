@@ -24,8 +24,8 @@ public final class CommonsCsvRowSource implements CsvRowSource {
 
     @Override
     public CsvRowCursor openCursor(Path csvFile, Schema schema) {
-        Objects.requireNonNull(csvFile, "csvFile");
-        Objects.requireNonNull(schema, "schema");
+        Objects.requireNonNull(csvFile, "csvFile must not be null");
+        Objects.requireNonNull(schema, "schema must not be null");
 
         try {
             BufferedReader reader = Files.newBufferedReader(csvFile, StandardCharsets.UTF_8);

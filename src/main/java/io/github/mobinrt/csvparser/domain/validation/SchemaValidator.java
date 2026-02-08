@@ -15,7 +15,7 @@ public final class SchemaValidator {
     private static final Pattern SQL_IDENTIFIER = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
 
     public void validate(Schema schema) {
-        Objects.requireNonNull(schema, "schema");
+        Objects.requireNonNull(schema, "schema must not be null");
 
         validateTableNames(schema);
         validateColumns(schema);

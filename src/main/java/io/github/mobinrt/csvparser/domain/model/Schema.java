@@ -11,8 +11,8 @@ public final class Schema {
 
     public Schema(String tableName, List<ColumnDef> columns, CsvFormat csv) {
         this.tableName = tableName;
-        this.columns = List.copyOf(Objects.requireNonNull(columns, "columns"));
-        this.csv = Objects.requireNonNull(csv, "csv");
+        this.columns = List.copyOf(Objects.requireNonNull(columns, "columns must not be null"));
+        this.csv = Objects.requireNonNull(csv, "csv must not be null");
     }
 
     public String getTableName() {

@@ -32,7 +32,7 @@ public final class MySqlTableWriter implements TableWriter {
 
     @Override
     public void ensureDataTableExists(Schema schema, String tableOverride, List<String> includeColumns) {
-        Objects.requireNonNull(schema, "schema");
+        Objects.requireNonNull(schema, "schema must not be null");
 
         String tableName = chooseTableName(schema, tableOverride);
         SqlIdentifier.requireSafe("table name", tableName);

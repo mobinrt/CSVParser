@@ -11,9 +11,9 @@ public final class RowData {
     private final String rawRow;
 
     public RowData(String sourceFile, long rowNumber, List<String> values, String rawRow) {
-        this.sourceFile = Objects.requireNonNull(sourceFile, "sourceFile");
+        this.sourceFile = Objects.requireNonNull(sourceFile, "sourceFile must not be null");
         this.rowNumber = rowNumber;
-        this.values = List.copyOf(Objects.requireNonNull(values, "values"));
+        this.values = List.copyOf(Objects.requireNonNull(values, "values must not be null"));
         this.rawRow = rawRow;
     }
 
