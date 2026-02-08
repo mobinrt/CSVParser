@@ -8,12 +8,16 @@ import javax.sql.DataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.github.mobinrt.csvparser.domain.model.RowData;
 import io.github.mobinrt.csvparser.domain.model.ScanMode;
 import io.github.mobinrt.csvparser.domain.model.Schema;
+import io.github.mobinrt.csvparser.domain.ports.CsvRowCursor;
+import io.github.mobinrt.csvparser.domain.ports.CsvRowSource;
 import io.github.mobinrt.csvparser.domain.ports.ErrorWriter;
 import io.github.mobinrt.csvparser.domain.ports.InputResolver;
 import io.github.mobinrt.csvparser.domain.ports.TableWriter;
 import io.github.mobinrt.csvparser.domain.validation.SchemaValidator;
+import io.github.mobinrt.csvparser.infrastructure.csv.CommonsCsvRowSource;
 import io.github.mobinrt.csvparser.infrastructure.db.DataSourceFactory;
 import io.github.mobinrt.csvparser.infrastructure.db.MySqlErrorWriter;
 import io.github.mobinrt.csvparser.infrastructure.db.MySqlTableWriter;
@@ -30,6 +34,7 @@ public final class ParseCsvUseCase {
     private final JsonSchemaLoader schemaLoader = new JsonSchemaLoader();
     private final SchemaValidator schemaValidator = new SchemaValidator();
     private final InputResolver inputResolver = new FileSystemInputResolver();
+    private final CsvRowSource csvRowSource = new CommonsCsvRowSource();
 
     public void execute(ParseRequest request) {
         log.info("Starting parse run. schema={}, inputs={}, recursive={}, validateTypes={}, batchSize={}",
@@ -43,9 +48,11 @@ public final class ParseCsvUseCase {
 
         Schema schema = schemaSetup(request);
 
-        inputSetup(request);
+        List<Path> csvFiles = inputSetup(request);
 
         dbSetup(request, schema);
+
+        streamingParse(schema, csvFiles);
 
     }
 
@@ -57,7 +64,7 @@ public final class ParseCsvUseCase {
         return schema;
     }
 
-    private void inputSetup(ParseRequest request) {
+    private List<Path> inputSetup(ParseRequest request) {
         ScanMode scanMode = request.recursive() ? ScanMode.RECURSIVE : ScanMode.NON_RECURSIVE;
         List<Path> csvFiles = inputResolver.resolveCsvFiles(request.inputs(), scanMode);
         if (csvFiles.isEmpty()) {
@@ -74,6 +81,7 @@ public final class ParseCsvUseCase {
             }
             log.info("  ... ({} more)", csvFiles.size() - 10);
         }
+        return csvFiles;
     }
 
     private void dbSetup(ParseRequest request, Schema schema) {
@@ -83,6 +91,28 @@ public final class ParseCsvUseCase {
 
         errorWriter.ensureErrorTableExist();
         tableWriter.ensureDataTableExists(schema, request.tableOverride(), request.includeColumns());
+    }
+
+    private void streamingParse(Schema schema, List<Path> csvFiles) {
+        long totalRows = 0;
+        for (Path csvFile : csvFiles) {
+            long fileRows = 0;
+            log.info("Parsing file (streaming): {}", csvFile);
+
+            try (CsvRowCursor cursor = csvRowSource.openCursor(csvFile, schema)) {
+                while (cursor.hasNext()) {
+                    RowData row = cursor.next();
+                    fileRows++;
+                    totalRows++;
+
+                    if (fileRows <= 3) {
+                        log.debug("Row {}: {}", row.getRowNumber(), row.getValues());
+                    }
+                }
+            }
+            log.info("Finished file: {} (rows={})", csvFile, fileRows);
+        }
+        log.info("streamed {} total row(s).", totalRows);
     }
 
 }
