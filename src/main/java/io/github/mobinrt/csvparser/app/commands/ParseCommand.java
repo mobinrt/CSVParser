@@ -1,16 +1,19 @@
 package io.github.mobinrt.csvparser.app.commands;
 
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
 import io.github.mobinrt.csvparser.usecase.ParseCsvUseCase;
 import io.github.mobinrt.csvparser.usecase.ParseRequest;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-
 @Command(name = "parse", mixinStandardHelpOptions = true, description = "Parse CSV inputs and write to MySQL; bad rows go to error table.")
 public final class ParseCommand implements Runnable {
+
+    @Option(names = "--config", description = "Optional config.properties path (default: ${DEFAULT-VALUE})")
+    private Path configPath = Path.of("config.properties");
 
     @Option(names = {"--schema"}, required = true, description = "Path to schema.json")
     private Path schemaPath;
@@ -53,13 +56,16 @@ public final class ParseCommand implements Runnable {
 
     @Override
     public void run() {
+        var resolvedDb = new io.github.mobinrt.csvparser.app.config.DbConfigResolver()
+                .resolveDbConfig(dbUrl, dbUser, dbPass, configPath);
+
         ParseRequest request = ParseRequest.builder()
                 .schemaPath(schemaPath)
                 .inputs(inputs)
                 .recursive(recursive)
-                .dbUrl(firstNonBlank(dbUrl, System.getenv("CSV_DB_URL")))
-                .dbUser(firstNonBlank(dbUser, System.getenv("CSV_DB_USER")))
-                .dbPass(firstNonBlank(dbPass, System.getenv("CSV_DB_PASS")))
+                .dbUrl(resolvedDb.getDbUrl())
+                .dbUser(resolvedDb.getDbUser())
+                .dbPass(resolvedDb.getDbPass())
                 .tableOverride(tableOverride)
                 .includeColumns(includeColumns)
                 .batchSize(batchSize)
@@ -69,15 +75,5 @@ public final class ParseCommand implements Runnable {
                 .build();
 
         new ParseCsvUseCase().execute(request);
-    }
-
-    private static String firstNonBlank(String a, String b) {
-        if (a != null && !a.isBlank()) {
-            return a;
-        }
-        if (b != null && !b.isBlank()) {
-            return b;
-        }
-        return null;
     }
 }

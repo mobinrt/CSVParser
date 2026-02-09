@@ -91,3 +91,4 @@ nb-configuration.xml
 logs/
 .env
 test
+config.properties

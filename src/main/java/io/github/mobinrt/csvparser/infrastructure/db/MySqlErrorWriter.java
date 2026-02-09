@@ -1,6 +1,7 @@
 package io.github.mobinrt.csvparser.infrastructure.db;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.Statement;
 
 import javax.sql.DataSource;
@@ -8,6 +9,7 @@ import javax.sql.DataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.github.mobinrt.csvparser.domain.model.ErrorRow;
 import io.github.mobinrt.csvparser.domain.ports.ErrorWriter;
 
 public final class MySqlErrorWriter implements ErrorWriter {
@@ -40,5 +42,32 @@ public final class MySqlErrorWriter implements ErrorWriter {
         } catch (Exception e) {
             throw new IllegalStateException("Failed to create/verify error_rows table", e);
         }
+    }
+
+    @Override
+    public void writeErrorRow(ErrorRow errorRow) {
+        String sql = """
+            INSERT INTO `error_rows` (`source_file`, `row_number`, `raw_row`, `error_message`)
+            VALUES (?, ?, ?, ?)
+            """;
+
+        Object[] params = toParams(errorRow);
+
+        try (Connection c = dataSource.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            for (int i = 0; i < params.length; i++) {
+                ps.setObject(i + 1, params[i]);
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to insert into error_rows", e);
+        }
+    }
+
+    private static Object[] toParams(ErrorRow r) {
+        return new Object[]{
+            r.getSourceFile(),
+            r.getRowNumber(),
+            r.getRawRow(),
+            r.getErrorMessage()
+        };
     }
 }
