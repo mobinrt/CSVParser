@@ -12,7 +12,7 @@ import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.github.mobinrt.csvparser.domain.model.ScanMode;
+import io.github.mobinrt.csvparser.domain.services.ScanMode;
 import io.github.mobinrt.csvparser.domain.ports.InputResolver;
 
 public final class FileSystemInputResolver implements InputResolver {

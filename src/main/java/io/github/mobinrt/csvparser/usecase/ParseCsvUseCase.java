@@ -9,7 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.github.mobinrt.csvparser.domain.model.RowData;
-import io.github.mobinrt.csvparser.domain.model.ScanMode;
+import io.github.mobinrt.csvparser.domain.services.ScanMode;
 import io.github.mobinrt.csvparser.domain.model.Schema;
 import io.github.mobinrt.csvparser.domain.ports.CsvRowCursor;
 import io.github.mobinrt.csvparser.domain.ports.CsvRowSource;

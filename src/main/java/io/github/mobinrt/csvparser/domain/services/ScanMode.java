@@ -1,4 +1,4 @@
-package io.github.mobinrt.csvparser.domain.model;
+package io.github.mobinrt.csvparser.domain.services;
 
 public enum ScanMode {
     NON_RECURSIVE,

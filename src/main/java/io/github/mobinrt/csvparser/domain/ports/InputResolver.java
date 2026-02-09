@@ -3,7 +3,7 @@ package io.github.mobinrt.csvparser.domain.ports;
 import java.nio.file.Path;
 import java.util.List;
 
-import io.github.mobinrt.csvparser.domain.model.ScanMode;
+import io.github.mobinrt.csvparser.domain.services.ScanMode;
 
 public interface InputResolver {
 
