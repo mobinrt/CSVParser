@@ -14,6 +14,9 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 
+import io.github.mobinrt.csvparser.domain.errors.CsvFileFormatException;
+import io.github.mobinrt.csvparser.domain.errors.CsvFileReadException;
+import io.github.mobinrt.csvparser.domain.errors.CsvRowReadException;
 import io.github.mobinrt.csvparser.domain.model.ColumnDef;
 import io.github.mobinrt.csvparser.domain.model.RowData;
 import io.github.mobinrt.csvparser.domain.model.Schema;
@@ -26,114 +29,170 @@ public final class CommonsCsvRowSource implements CsvRowSource {
     public CsvRowCursor openCursor(Path csvFile, Schema schema) {
         Objects.requireNonNull(csvFile, "csvFile must not be null");
         Objects.requireNonNull(schema, "schema must not be null");
+        Objects.requireNonNull(schema.getCsv(), "schema.csv must not be null");
+
+        String sourceFile = csvFile.toAbsolutePath().normalize().toString();
+        CSVParser parser = openParser(csvFile, schema, sourceFile);
 
         try {
-            BufferedReader reader = Files.newBufferedReader(csvFile, StandardCharsets.UTF_8);
-
-            CSVFormat format = CSVFormat.DEFAULT.builder()
-                    .setDelimiter(schema.getCsv().getDelimiter())
-                    .setQuote(schema.getCsv().getQuote())
-                    .setTrim(true)
-                    .setIgnoreSurroundingSpaces(true)
-                    .setIgnoreEmptyLines(true)
-                    .setAllowMissingColumnNames(false)
-                    .setLenientEof(true)
-                    .setHeader(schema.getCsv().hasHeader() ? new String[0] : null)
-                    .setSkipHeaderRecord(schema.getCsv().hasHeader())
-                    .build();
-
-            CSVParser parser = new CSVParser(reader, format);
-
             if (schema.getCsv().hasHeader()) {
-                validateHeader(parser, schema, csvFile);
+                validateHeader(parser, schema, sourceFile);
             }
-
-            Iterator<CSVRecord> it = parser.iterator();
-            return new CommonsCursor(csvFile, schema, parser, it);
-
-        } catch (IOException e) {
-            throw new IllegalArgumentException("Failed to open CSV file: " + csvFile, e);
+            return createCursor(csvFile, schema, parser, sourceFile);
+        } catch (RuntimeException e) {
+            closeQuietly(parser);
+            throw e;
         }
     }
 
-    private void validateHeader(CSVParser parser, Schema schema, Path csvFile) {
-        List<String> actual = parser.getHeaderNames();
-        List<String> expected = schema.getColumns().stream()
+    private CSVParser openParser(Path csvFile, Schema schema, String sourceFile) {
+        try {
+            BufferedReader reader = Files.newBufferedReader(csvFile, StandardCharsets.UTF_8);
+            CSVFormat format = buildFormat(schema);
+            return new CSVParser(reader, format);
+        } catch (IOException e) {
+            throw new CsvFileReadException(sourceFile, "Failed to open/read CSV file", e);
+        }
+    }
+
+    private CSVFormat buildFormat(Schema schema) {
+        var csv = schema.getCsv();
+
+        return CSVFormat.DEFAULT.builder()
+                .setDelimiter(csv.getDelimiter())
+                .setQuote(csv.getQuote())
+                .setTrim(true)
+                .setIgnoreSurroundingSpaces(true)
+                .setIgnoreEmptyLines(true)
+                .setAllowMissingColumnNames(false)
+                .setLenientEof(true)
+                .setHeader(csv.hasHeader() ? new String[0] : null)
+                .setSkipHeaderRecord(csv.hasHeader())
+                .build();
+    }
+
+    private CsvRowCursor createCursor(Path csvFile, Schema schema, CSVParser parser, String sourceFile) {
+        int expectedColumns = schema.getColumns().size();
+        char delimiter = schema.getCsv().getDelimiter();
+
+        Iterator<CSVRecord> iterator = parser.iterator();
+        return new CommonsCursor(csvFile, parser, iterator, expectedColumns, delimiter, sourceFile);
+    }
+
+    private void validateHeader(CSVParser parser, Schema schema, String sourceFile) {
+        List<String> actualHeader = parser.getHeaderNames();
+        List<String> expectedHeader = schema.getColumns().stream()
                 .map(ColumnDef::getName)
                 .toList();
 
+        ensureSameHeaderSize(expectedHeader, actualHeader, sourceFile);
+        ensureSameHeaderNames(expectedHeader, actualHeader, sourceFile);
+    }
+
+    private void ensureSameHeaderSize(List<String> expected, List<String> actual, String sourceFile) {
         if (actual.size() != expected.size()) {
-            throw new IllegalArgumentException(
-                    "CSV header column count mismatch in " + csvFile
-                    + ". expected=" + expected.size() + " actual=" + actual.size()
-                    + " expectedHeader=" + expected + " actualHeader=" + actual
+            throw new CsvFileFormatException(
+                    sourceFile,
+                    "CSV header column count mismatch. expected=" + expected.size()
+                    + " actual=" + actual.size()
+                    + " expectedHeader=" + expected
+                    + " actualHeader=" + actual
             );
         }
+    }
 
+    private void ensureSameHeaderNames(List<String> expected, List<String> actual, String sourceFile) {
         for (int i = 0; i < expected.size(); i++) {
-            String exp = normalizeHeader(expected.get(i));
-            String act = normalizeHeader(actual.get(i));
+            String exp = normalize(expected.get(i));
+            String act = normalize(actual.get(i));
+
             if (!exp.equalsIgnoreCase(act)) {
-                throw new IllegalArgumentException(
-                        "CSV header mismatch at index " + i + " in " + csvFile
-                        + ". expected='" + expected.get(i) + "' actual='" + actual.get(i) + "'"
+                throw new CsvFileFormatException(
+                        sourceFile,
+                        "CSV header mismatch at index " + i
+                        + ". expected='" + expected.get(i)
+                        + "' actual='" + actual.get(i) + "'"
                 );
             }
         }
     }
 
-    private String normalizeHeader(String s) {
+    private String normalize(String s) {
         return s == null ? "" : s.trim();
+    }
+
+    private static void closeQuietly(CSVParser parser) {
+        try {
+            parser.close();
+        } catch (IOException ignored) {
+        }
     }
 
     private static final class CommonsCursor implements CsvRowCursor {
 
         private final Path csvFile;
-        private final Schema schema;
         private final CSVParser parser;
         private final Iterator<CSVRecord> iterator;
-        private boolean closed = false;
+        private final int expectedColumns;
+        private final char delimiter;
+        private final String sourceFile;
 
-        private CommonsCursor(Path csvFile, Schema schema, CSVParser parser, Iterator<CSVRecord> iterator) {
+        private boolean closed;
+
+        private CommonsCursor(
+                Path csvFile,
+                CSVParser parser,
+                Iterator<CSVRecord> iterator,
+                int expectedColumns,
+                char delimiter,
+                String sourceFile
+        ) {
             this.csvFile = csvFile;
-            this.schema = schema;
             this.parser = parser;
             this.iterator = iterator;
+            this.expectedColumns = expectedColumns;
+            this.delimiter = delimiter;
+            this.sourceFile = sourceFile;
         }
 
         @Override
         public boolean hasNext() {
-            boolean has = iterator.hasNext();
-            if (!has) {
+            try {
+                boolean has = iterator.hasNext();
+                if (!has) {
+                    close();
+                }
+                return has;
+            } catch (RuntimeException e) {
                 close();
+                throw new CsvFileReadException(sourceFile, "CSV read failed while iterating records", e);
             }
-            return has;
         }
 
         @Override
         public RowData next() {
-            CSVRecord record = iterator.next();
+            try {
+                CSVRecord record = iterator.next();
 
-            int expectedCols = schema.getColumns().size();
-            if (record.size() != expectedCols) {
-                String raw = buildRawRow(record);
-                throw new IllegalArgumentException(
-                        "CSV column count mismatch in " + csvFile
-                        + " at row " + record.getRecordNumber()
-                        + ". expected=" + expectedCols + " actual=" + record.size()
-                        + " rawRow=" + raw
+                ensureExpectedColumnCount(record);
+
+                List<String> values = record.stream().collect(Collectors.toList());
+                String reconstructedRow = join(values, delimiter);
+
+                return new RowData(
+                        csvFile.toAbsolutePath().normalize().toString(),
+                        record.getRecordNumber(),
+                        values,
+                        reconstructedRow
                 );
+
+            } catch (CsvRowReadException e) {
+                throw e;
+
+            } catch (RuntimeException e) {
+                close();
+                throw new CsvFileReadException(sourceFile, "CSV read failed while reading a record", e);
             }
-
-            List<String> values = toValues(record);
-            String rawRow = buildRawRow(values, schema.getCsv().getDelimiter());
-
-            return new RowData(
-                    csvFile.toAbsolutePath().normalize().toString(),
-                    record.getRecordNumber(),
-                    values,
-                    rawRow
-            );
         }
 
         @Override
@@ -142,22 +201,25 @@ public final class CommonsCsvRowSource implements CsvRowSource {
                 return;
             }
             closed = true;
-            try {
-                parser.close();
-            } catch (IOException ignored) {
+            closeQuietly(parser);
+        }
+
+        private void ensureExpectedColumnCount(CSVRecord record) {
+            int actual = record.size();
+            if (actual != expectedColumns) {
+                List<String> values = record.stream().collect(Collectors.toList());
+                String reconstructedRow = join(values, delimiter);
+
+                throw new CsvRowReadException(
+                        sourceFile,
+                        record.getRecordNumber(),
+                        reconstructedRow,
+                        "CSV column count mismatch. expected=" + expectedColumns + " actual=" + actual
+                );
             }
         }
 
-        private List<String> toValues(CSVRecord record) {
-            return record.stream().collect(Collectors.toList());
-        }
-
-        private String buildRawRow(CSVRecord record) {
-            List<String> values = record.stream().collect(Collectors.toList());
-            return buildRawRow(values, schema.getCsv().getDelimiter());
-        }
-
-        private String buildRawRow(List<String> values, char delimiter) {
+        private static String join(List<String> values, char delimiter) {
             String d = String.valueOf(delimiter);
             return values.stream()
                     .map(v -> v == null ? "" : v)
