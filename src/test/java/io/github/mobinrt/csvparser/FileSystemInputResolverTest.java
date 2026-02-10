@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
-import io.github.mobinrt.csvparser.domain.model.ScanMode;
+import io.github.mobinrt.csvparser.domain.services.ScanMode;
 import io.github.mobinrt.csvparser.infrastructure.filesystem.FileSystemInputResolver;
 
 class FileSystemInputResolverTest {
