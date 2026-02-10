@@ -183,6 +183,14 @@ public final class ParseCsvUseCase {
             stats.errorRows++;
             writeFileError(db, fileEx.getSourceFile(), fileEx.getMessage());
             log.warn("Skipping file due to CSV error: {} ({})", csvFile, fileEx.getMessage());
+
+        } catch (RuntimeException unexpectedCsv) {
+            stats.errorRows++;
+            String sourceFile = csvFile.toAbsolutePath().normalize().toString();
+            String message = "Unexpected CSV processing error: " + safeMessage(unexpectedCsv);
+            writeFileError(db, sourceFile, message);
+            log.warn("Skipping file due to unexpected CSV error: {} ({})", csvFile, safeMessage(unexpectedCsv));
+
         } catch (Exception e) {
             throw new IllegalStateException("Fatal failure while processing file: " + csvFile + " (" + e.getMessage() + ")", e);
         }
@@ -300,6 +308,14 @@ public final class ParseCsvUseCase {
                     "DB config missing. Provide --db-url/--db-user/--db-pass or env CSV_DB_URL/CSV_DB_USER/CSV_DB_PASS"
             );
         }
+    }
+
+    private String safeMessage(Exception ex) {
+        if (ex == null) {
+            return "null";
+        }
+        String m = ex.getMessage();
+        return (m == null || m.isBlank()) ? ex.getClass().getSimpleName() : m;
     }
 
     private static final class ImportStats {
