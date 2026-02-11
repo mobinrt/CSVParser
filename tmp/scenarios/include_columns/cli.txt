@@ -1,0 +1,9 @@
+java -cp .\target\csv-parser-1.0.0.jar io.github.mobinrt.csvparser.app.CliApp parse `
+  --schema .\tmp\scenarios\include_columns\schema.json `
+  --input  .\tmp\scenarios\include_columns\data.csv `
+  --include-columns id,name `
+  --table import_subset `
+  --db-url "jdbc:mysql://localhost:3307/csvdb" `
+  --db-user "csv" `
+  --db-pass "csv" `
+  --validate-types

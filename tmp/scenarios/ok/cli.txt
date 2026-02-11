@@ -1,0 +1,10 @@
+java -cp $JAR $MAIN parse `
+  --schema .\tmp\scenarios\ok\schema.json `
+  --input  .\tmp\scenarios\ok\data.csv `
+  --batch-size 2 `
+  --validate-types
+
+
+
+--------test------
+docker compose exec mysql mysql -u csv -pcsv csvdb -e "SELECT COUNT(*) AS cnt FROM import_ok; SELECT COUNT(*) AS err_cnt FROM error_rows;"

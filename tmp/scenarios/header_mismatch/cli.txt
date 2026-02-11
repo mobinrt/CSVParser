@@ -1,0 +1,12 @@
+java -cp $JAR $MAIN parse `
+  --schema .\tmp\scenarios\header_mismatch\schema.json `
+  --input  .\tmp\scenarios\header_mismatch\data.csv `
+  --db-url "jdbc:mysql://localhost:3307/csvdb" `
+  --db-user "csv" `
+  --db-pass "csv" `
+  --validate-types
+
+
+-----tets---
+
+docker compose exec mysql mysql -u csv -pcsv csvdb -e "SELECT id,source_file,row_num,error_message FROM error_rows ORDER BY id DESC LIMIT 5;"

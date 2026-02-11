@@ -1,0 +1,18 @@
+{
+    "tableName": "import_strict",
+    "csv": {
+        "delimiter": ",",
+        "quote": "\"",
+        "hasHeader": true
+    },
+    "columns": [
+        {
+            "name": "id",
+            "type": "INT"
+        },
+        {
+            "name": "name",
+            "type": "VARCHAR(3)"
+        }
+    ]
+}

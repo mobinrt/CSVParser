@@ -1,0 +1,22 @@
+{
+    "tableName": "import_ok",
+    "csv": {
+        "delimiter": ",",
+        "quote": "\"",
+        "hasHeader": true
+    },
+    "columns": [
+        {
+            "name": "id",
+            "type": "INT"
+        },
+        {
+            "name": "name",
+            "type": "VARCHAR(50)"
+        },
+        {
+            "name": "created_at",
+            "type": "DATETIME"
+        }
+    ]
+}

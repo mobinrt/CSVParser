@@ -1,0 +1,7 @@
+java -cp .\target\csv-parser-1.0.0.jar io.github.mobinrt.csvparser.app.CliApp parse `
+  --schema .\tmp\scenarios\no_validate_db_fails\schema.json `
+  --input  .\tmp\scenarios\no_validate_db_fails\data.csv `
+  --db-url "jdbc:mysql://localhost:3307/csvdb" `
+  --db-user "csv" `
+  --db-pass "csv" `
+  --batch-size 3
